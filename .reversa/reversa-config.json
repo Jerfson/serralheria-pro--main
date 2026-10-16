@@ -1,0 +1,10 @@
+ {
+      "version": 1,
+      "allowLegacyEdits": true,
+      "allowedPaths": [
+        "index.html",
+        "README.md",
+        "src/**",
+        "tests/**"
+      ]
+    }

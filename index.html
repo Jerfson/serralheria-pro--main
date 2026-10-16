@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full bg-slate-50">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Serralheria Pro — Sistema de Orçamentos e Corte de Barras</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- jsPDF CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f8fafc',
+              500: '#0284c7',
+              600: '#0369a1',
+              700: '#075985',
+              800: '#0c4a6e',
+              900: '#0f172a'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Estilos para impressão e personalização fina */
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+      -webkit-appearance: none; 
+      margin: 0; 
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col font-sans text-slate-800 antialiased">
+
+  <!-- TOAST NOTIFICATIONS CONTAINER -->
+  <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- CABEÇALHO SUPERIOR -->
+  <header class="bg-slate-900 text-white shadow-md border-b border-slate-800 sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <!-- Logo e Identidade -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-sky-600 flex items-center justify-center text-white shadow-inner font-black text-xl">
+            <i data-lucide="anvil" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <div id="header-oficina-nome" class="font-bold text-lg leading-tight tracking-tight text-white">Serralheria Modelo</div>
+            <div class="text-xs text-sky-400 font-medium">Orçamentos & Corte de Barras de 6m</div>
+          </div>
+        </div>
+
+        <!-- Navegação em Abas (Desktop) -->
+        <nav class="hidden md:flex items-center space-x-1">
+          <button id="nav-btn-orcamentos" onclick="window.app.mudarAba('orcamentos')" class="nav-tab px-3 py-2 rounded-md text-sm font-medium transition-colors bg-slate-800 text-white">
+            <i data-lucide="layout-grid" class="w-4 h-4 inline mr-1.5"></i>Orçamentos
+          </button>
+          <button id="nav-btn-novo" onclick="window.app.mudarAba('novo')" class="nav-tab px-3 py-2 rounded-md text-sm font-medium transition-colors text-slate-300 hover:text-white hover:bg-slate-800">
+            <i data-lucide="plus-circle" class="w-4 h-4 inline mr-1.5"></i>Novo Orçamento
+          </button>
+          <button id="nav-btn-catalogo" onclick="window.app.mudarAba('catalogo')" class="nav-tab px-3 py-2 rounded-md text-sm font-medium transition-colors text-slate-300 hover:text-white hover:bg-slate-800">
+            <i data-lucide="tags" class="w-4 h-4 inline mr-1.5"></i>Catálogo & Preços
+          </button>
+          <button id="nav-btn-config" onclick="window.app.mudarAba('config')" class="nav-tab px-3 py-2 rounded-md text-sm font-medium transition-colors text-slate-300 hover:text-white hover:bg-slate-800">
+            <i data-lucide="settings" class="w-4 h-4 inline mr-1.5"></i>Configurações & Backup
+          </button>
+        </nav>
+
+        <!-- Ação Rápida Mobile: Novo Orçamento -->
+        <div class="md:hidden flex items-center">
+          <button onclick="window.app.mudarAba('novo')" class="p-2 rounded-lg bg-sky-600 text-white text-sm font-semibold flex items-center gap-1 shadow">
+            <i data-lucide="plus" class="w-4 h-4"></i>Novo
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Navegação Mobile Inferior / Subheader -->
+    <div class="md:hidden border-t border-slate-800 bg-slate-950 px-2 py-1.5 flex justify-around text-xs">
+      <button onclick="window.app.mudarAba('orcamentos')" class="mobile-nav-btn py-1 px-2 text-slate-300 flex flex-col items-center gap-0.5">
+        <i data-lucide="layout-grid" class="w-4 h-4"></i>Orçamentos
+      </button>
+      <button onclick="window.app.mudarAba('novo')" class="mobile-nav-btn py-1 px-2 text-slate-300 flex flex-col items-center gap-0.5">
+        <i data-lucide="plus-circle" class="w-4 h-4"></i>Novo
+      </button>
+      <button onclick="window.app.mudarAba('catalogo')" class="mobile-nav-btn py-1 px-2 text-slate-300 flex flex-col items-center gap-0.5">
+        <i data-lucide="tags" class="w-4 h-4"></i>Preços
+      </button>
+      <button onclick="window.app.mudarAba('config')" class="mobile-nav-btn py-1 px-2 text-slate-300 flex flex-col items-center gap-0.5">
+        <i data-lucide="settings" class="w-4 h-4"></i>Ajustes
+      </button>
+    </div>
+  </header>
+
+  <!-- ÁREA DE CONTEÚDO PRINCIPAL -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- ABA 1: LISTAGEM DE ORÇAMENTOS (PAINEL KANBAN / LISTA)      -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <section id="aba-orcamentos" class="space-y-6">
+      
+      <!-- Topo: Filtros e Métricas Rápidas -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider mr-1">Filtrar:</span>
+          <button onclick="window.app.filtrarStatus('todos')" class="filtro-btn px-3 py-1 rounded-full text-xs font-semibold bg-slate-900 text-white" data-status="todos">Todos (<span id="count-todos">0</span>)</button>
+          <button onclick="window.app.filtrarStatus('aberto')" class="filtro-btn px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200" data-status="aberto">Em Aberto (<span id="count-aberto">0</span>)</button>
+          <button onclick="window.app.filtrarStatus('enviado')" class="filtro-btn px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200" data-status="enviado">Enviados (<span id="count-enviado">0</span>)</button>
+          <button onclick="window.app.filtrarStatus('aprovado')" class="filtro-btn px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200" data-status="aprovado">Aprovados (<span id="count-aprovado">0</span>)</button>
+          <button onclick="window.app.filtrarStatus('em_producao')" class="filtro-btn px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200" data-status="em_producao">Em Produção (<span id="count-em_producao">0</span>)</button>
+          <button onclick="window.app.filtrarStatus('concluido')" class="filtro-btn px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200" data-status="concluido">Concluídos (<span id="count-concluido">0</span>)</button>
+        </div>
+
+        <div class="relative w-full sm:w-64">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3 top-3 text-slate-400"></i>
+          <input type="text" id="busca-orcamento" oninput="window.app.buscarOrcamentos(this.value)" placeholder="Buscar cliente..." class="w-full pl-9 pr-3 py-1.5 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none">
+        </div>
+      </div>
+
+      <!-- Container da Lista de Orçamentos -->
+      <div id="lista-orcamentos-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Renderizado dinamicamente via app.js -->
+      </div>
+
+      <!-- Estado Vazio -->
+      <div id="orcamentos-vazio" class="hidden text-center py-16 bg-white rounded-xl border border-dashed border-slate-300 p-8">
+        <div class="w-16 h-16 bg-sky-50 text-sky-600 rounded-full flex items-center justify-center mx-auto mb-4">
+          <i data-lucide="file-spreadsheet" class="w-8 h-8"></i>
+        </div>
+        <h3 class="text-base font-semibold text-slate-800">Nenhum orçamento encontrado</h3>
+        <p class="text-sm text-slate-500 mt-1 max-w-sm mx-auto">Comece elaborando uma nova proposta rápida com quantificação de barras comerciais de 6 metros.</p>
+        <button onclick="window.app.mudarAba('novo')" class="mt-4 inline-flex items-center px-4 py-2 rounded-lg bg-sky-600 text-white font-medium text-sm hover:bg-sky-700 transition">
+          <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i>Criar Primeiro Orçamento
+        </button>
+      </div>
+
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- ABA 2: NOVO ORÇAMENTO (CALCULADOR PARAMÉTRICO)            -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <section id="aba-novo" class="hidden space-y-6">
+      
+      <div class="flex items-center justify-between pb-2 border-b border-slate-200">
+        <div>
+          <h2 id="form-titulo" class="text-xl font-bold text-slate-900">Novo Orçamento Paramétrico</h2>
+          <p class="text-sm text-slate-500">Cálculo de barras de 6m, corte com kerf e preço com margem protegida.</p>
+        </div>
+        <button onclick="window.app.limparFormulario()" class="text-xs text-slate-500 hover:text-slate-800 underline font-medium">
+          Limpar Formulário
+        </button>
+      </div>
+
+      <!-- Grid Principal do Formulário -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Coluna Esquerda: Dados do Cliente e Parâmetros da Estrutura (7 colunas) -->
+        <div class="lg:col-span-7 space-y-6">
+          
+          <!-- Bloco Cliente -->
+          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+            <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+              <i data-lucide="user" class="w-4 h-4 text-sky-600"></i>1. Dados do Cliente
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Nome do Cliente *</label>
+                <input type="text" id="campo-cliente-nome" placeholder="Ex: Roberto Almeida" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Telefone / WhatsApp *</label>
+                <input type="text" id="campo-cliente-telefone" placeholder="(11) 98765-4321" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+              </div>
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Endereço / Local da Instalação (Opcional)</label>
+                <input type="text" id="campo-cliente-endereco" placeholder="Ex: Rua das Flores, 120 - Bairro Alto" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+              </div>
+            </div>
+          </div>
+
+          <!-- Bloco Modelo da Estrutura -->
+          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+            <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+              <i data-lucide="box" class="w-4 h-4 text-sky-600"></i>2. Tipologia da Estrutura
+            </h3>
+            <div id="tipologia-selector" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <!-- Renderizado via app.js com templates de estruturas -->
+            </div>
+          </div>
+
+          <!-- Bloco Medidas e Perfis -->
+          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+            <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+              <i data-lucide="ruler" class="w-4 h-4 text-sky-600"></i>3. Medidas & Perfis Metálicos
+            </h3>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <!-- Quantidade de Peças Idênticas -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Quantidade de Peças *</label>
+                <div class="flex items-center">
+                  <button type="button" onclick="window.app.decrementarQuantidade()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-l-lg text-slate-700 font-bold transition select-none">-</button>
+                  <input type="number" id="campo-quantidade" oninput="window.app.recalcularEmTempoReal(false)" value="1" min="1" max="100" class="w-full py-2 text-sm font-mono font-black text-center border-y border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+                  <button type="button" onclick="window.app.incrementarQuantidade()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-r-lg text-slate-700 font-bold transition select-none">+</button>
+                </div>
+                <span class="text-[11px] text-slate-500" id="label-quantidade-resumo">1 unidade idêntica</span>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Largura (mm) *</label>
+                <div class="relative">
+                  <input type="number" id="campo-largura-mm" oninput="window.app.recalcularEmTempoReal(false)" value="3000" min="400" max="15000" step="50" class="w-full px-3 py-2 pr-9 text-sm font-mono font-bold rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+                  <span class="absolute right-3 top-2.5 text-xs text-slate-400 font-semibold">mm</span>
+                </div>
+                <span class="text-[11px] text-slate-500" id="largura-metros-label">3,00 metros</span>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Altura (mm) *</label>
+                <div class="relative">
+                  <input type="number" id="campo-altura-mm" oninput="window.app.recalcularEmTempoReal(false)" value="2200" min="400" max="6000" step="50" class="w-full px-3 py-2 pr-9 text-sm font-mono font-bold rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+                  <span class="absolute right-3 top-2.5 text-xs text-slate-400 font-semibold">mm</span>
+                </div>
+                <span class="text-[11px] text-slate-500" id="altura-metros-label">2,20 metros</span>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Espaçamento Barras (mm)</label>
+                <div class="relative">
+                  <input type="number" id="campo-espacamento-mm" oninput="window.app.recalcularEmTempoReal(false)" value="120" min="50" max="500" step="10" class="w-full px-3 py-2 pr-9 text-sm font-mono rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+                  <span class="absolute right-3 top-2.5 text-xs text-slate-400 font-semibold">mm</span>
+                </div>
+                <span class="text-[11px] text-slate-500">vão livre interno</span>
+              </div>
+            </div>
+
+            <!-- Seleção de Perfis -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Perfil do Requadro / Estrutura</label>
+                <select id="campo-perfil-requadro" onchange="window.app.recalcularEmTempoReal()" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none bg-white">
+                  <!-- Carregado via app.js -->
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Perfil do Preenchimento / Travessas</label>
+                <select id="campo-perfil-preenchimento" onchange="window.app.recalcularEmTempoReal()" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none bg-white">
+                  <!-- Carregado via app.js -->
+                </select>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between text-xs text-slate-500 pt-1">
+              <span>Perda de corte (disco): <b id="label-kerf">3mm</b> por corte</span>
+              <span>Área total aproximada: <b id="label-area-m2" class="text-slate-800">6,6 m²</b></span>
+            </div>
+
+            <!-- Seção de Custos Manuais Deste Item -->
+            <div class="pt-3 border-t border-slate-200 bg-slate-50/80 p-3.5 rounded-xl border border-slate-200 space-y-3">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <i data-lucide="coins" class="w-3.5 h-3.5 text-amber-500"></i>Custos Deste Item (Insumos, Pintura, Ferragens, Mão de Obra e Frete)
+                  </h4>
+                  <p class="text-[11px] text-slate-500">Ajuste os valores manuais desta peça antes de adicionar ao orçamento ou use as sugestões automáticas.</p>
+                </div>
+                <button type="button" onclick="window.app.recalcularCustosSugeridosItemAtual()" title="Restaurar estimativas calculadas da oficina para este item" class="text-[11px] text-sky-600 hover:text-sky-800 font-semibold flex items-center gap-1 transition">
+                  <i data-lucide="rotate-ccw" class="w-3 h-3"></i>Sugerir valores
+                </button>
+              </div>
+
+              <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+                <!-- Insumos do Item -->
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-700 mb-0.5 truncate" title="Insumos (Solda + Discos)">Insumos (Solda/Disco)</label>
+                  <div class="relative">
+                    <span class="absolute left-2 top-1.5 text-[10px] text-slate-400 font-bold">R$</span>
+                    <input type="number" id="item-custo-insumos" step="any" min="0" oninput="window.app.atualizarSubtotalItemAtual()" class="w-full pl-6 pr-1.5 py-1 text-xs font-mono font-bold text-right rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none bg-white">
+                  </div>
+                </div>
+
+                <!-- Pintura do Item -->
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-700 mb-0.5 truncate" title="Pintura (Zarcão / Fundo / Esmalte)">Pintura / Zarcão</label>
+                  <div class="relative">
+                    <span class="absolute left-2 top-1.5 text-[10px] text-slate-400 font-bold">R$</span>
+                    <input type="number" id="item-custo-pintura" step="any" min="0" oninput="window.app.atualizarSubtotalItemAtual()" class="w-full pl-6 pr-1.5 py-1 text-xs font-mono font-bold text-right rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none bg-white">
+                  </div>
+                </div>
+
+                <!-- Ferragens do Item -->
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-700 mb-0.5 truncate" title="Ferragens / Acessórios (Roldana/Fechadura)">Ferragens / Acessórios</label>
+                  <div class="relative">
+                    <span class="absolute left-2 top-1.5 text-[10px] text-slate-400 font-bold">R$</span>
+                    <input type="number" id="item-custo-ferragens" step="any" min="0" oninput="window.app.atualizarSubtotalItemAtual()" class="w-full pl-6 pr-1.5 py-1 text-xs font-mono font-bold text-right rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none bg-white">
+                  </div>
+                </div>
+
+                <!-- Mão de Obra do Item -->
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-700 mb-0.5 truncate" title="Mão de Obra de Fabricação">Mão de Obra Oficina</label>
+                  <div class="relative">
+                    <span class="absolute left-2 top-1.5 text-[10px] text-slate-400 font-bold">R$</span>
+                    <input type="number" id="item-custo-mao-obra" step="any" min="0" oninput="window.app.atualizarSubtotalItemAtual()" class="w-full pl-6 pr-1.5 py-1 text-xs font-mono font-bold text-right rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none bg-white">
+                  </div>
+                </div>
+
+                <!-- Frete do Item -->
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-700 mb-0.5 truncate" title="Frete / Logística do Item">Frete Deste Item</label>
+                  <div class="relative">
+                    <span class="absolute left-2 top-1.5 text-[10px] text-slate-400 font-bold">R$</span>
+                    <input type="number" id="item-custo-frete" step="any" min="0" value="0.00" oninput="window.app.atualizarSubtotalItemAtual()" class="w-full pl-6 pr-1.5 py-1 text-xs font-mono font-bold text-right rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none bg-white">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Subtotal do Item e Botão Adicionar -->
+              <div class="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t border-slate-200">
+                <div class="text-xs text-slate-600">
+                  <span>Custo direto estimado deste item: <strong id="subtotal-item-atual-val" class="text-slate-900 font-mono font-bold">R$ 0,00</strong></span>
+                </div>
+                <button type="button" onclick="window.app.adicionarItemAoOrcamento()" class="w-full sm:w-auto px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition">
+                  <i data-lucide="plus-circle" class="w-4 h-4"></i>Adicionar Item ao Orçamento
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Bloco: Itens Inclusos neste Orçamento (Lista / Carrinho) -->
+          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+            <div class="flex items-center justify-between pb-1 border-b border-slate-100">
+              <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                <i data-lucide="layers" class="w-4 h-4 text-sky-600"></i>Itens do Orçamento (<span id="contagem-itens-orcamento">1</span>)
+              </h3>
+              <span class="text-xs text-slate-400 font-medium">Você pode ter múltiplos tipos e tamanhos</span>
+            </div>
+
+            <div id="lista-itens-orcamento-container" class="space-y-2">
+              <!-- Renderizado dinamicamente via app.js -->
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Coluna Direita: Quantificação de Barras de 6m e Precificação BDI (5 colunas) -->
+        <div class="lg:col-span-5 space-y-6">
+
+          <!-- Card Resumo de Barras de 6m -->
+          <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-5 rounded-xl shadow-lg border border-slate-700 space-y-4">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
+                <i data-lucide="package" class="w-4 h-4"></i>Barras Comerciais de 6 Metros
+              </span>
+              <span id="badge-aproveitamento" class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                Aproveitamento 88%
+              </span>
+            </div>
+
+            <!-- Destaque Total de Barras -->
+            <div class="flex items-baseline justify-between border-b border-slate-700 pb-3">
+              <div>
+                <span class="text-xs text-slate-400">Total a comprar na distribuidora:</span>
+                <div class="flex items-baseline gap-2">
+                  <span id="resumo-total-barras" class="text-4xl font-extrabold text-white">8</span>
+                  <span class="text-sm font-semibold text-slate-300">barras fechadas de 6000mm</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Detalhamento por perfil -->
+            <div id="container-detalhe-barras-perfis" class="space-y-2 text-xs">
+              <!-- Renderizado dinamicamente via app.js para cada perfil do lote -->
+            </div>
+          </div>
+
+          <!-- Card Formação de Preço e Margem -->
+          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex items-center justify-between pb-1 border-b border-slate-100">
+              <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                <i data-lucide="calculator" class="w-4 h-4 text-sky-600"></i>4. Composição de Custos & Margem
+              </h3>
+              <button type="button" onclick="window.app.restaurarValoresCalculados()" title="Recalcular estimativas automáticas da oficina" class="text-[11px] text-sky-600 hover:text-sky-800 font-semibold flex items-center gap-1 transition">
+                <i data-lucide="rotate-ccw" class="w-3 h-3"></i>Recalcular automático
+              </button>
+            </div>
+
+            <!-- Lista de Custos Diretos com Inputs Manuais -->
+            <div class="space-y-2.5 text-xs text-slate-700">
+              
+              <!-- Perfis e Barras de 6m (calculado) -->
+              <div class="flex items-center justify-between bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                <div>
+                  <span class="font-bold text-slate-800">Perfis e Barras de 6m:</span>
+                  <div class="text-[10px] text-slate-500">Cálculo de corte de barras comerciais</div>
+                </div>
+                <span class="font-bold text-slate-900 font-mono text-sm" id="custo-barras-val">R$ 0,00</span>
+              </div>
+
+              <!-- Insumos (Solda + Discos corte/desbaste) -->
+              <div class="flex items-center justify-between gap-3">
+                <label for="campo-custo-insumos" class="font-medium text-slate-700">Insumos (Solda + Discos corte/desbaste):</label>
+                <div class="relative w-36">
+                  <span class="absolute left-2.5 top-1.5 text-xs text-slate-400 font-bold">R$</span>
+                  <input type="number" id="campo-custo-insumos" step="any" min="0" oninput="window.app.recalcularComValoresManuais()" class="w-full pl-8 pr-2.5 py-1 text-sm font-mono font-bold text-right rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+                </div>
+              </div>
+
+              <!-- Pintura (Fundo Primer + Esmalte) -->
+              <div class="flex items-center justify-between gap-3">
+                <label for="campo-custo-pintura" class="font-medium text-slate-700">Pintura (Fundo Primer + Esmalte):</label>
+                <div class="relative w-36">
+                  <span class="absolute left-2.5 top-1.5 text-xs text-slate-400 font-bold">R$</span>
+                  <input type="number" id="campo-custo-pintura" step="any" min="0" oninput="window.app.recalcularComValoresManuais()" class="w-full pl-8 pr-2.5 py-1 text-sm font-mono font-bold text-right rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+                </div>
+              </div>
+
+              <!-- Ferragens / Acessórios (Roldana/Fechadura) -->
+              <div class="flex items-center justify-between gap-3" id="linha-acessorios">
+                <label for="campo-custo-acessorios" class="font-medium text-slate-700">Ferragens / Acessórios (Roldana/Fechadura):</label>
+                <div class="relative w-36">
+                  <span class="absolute left-2.5 top-1.5 text-xs text-slate-400 font-bold">R$</span>
+                  <input type="number" id="campo-custo-acessorios" step="any" min="0" oninput="window.app.recalcularComValoresManuais()" class="w-full pl-8 pr-2.5 py-1 text-sm font-mono font-bold text-right rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+                </div>
+              </div>
+
+              <!-- Mão de Obra da Oficina -->
+              <div class="flex items-center justify-between gap-3">
+                <label for="campo-custo-mao-obra" class="font-medium text-slate-700">Mão de Obra da Oficina:</label>
+                <div class="relative w-36">
+                  <span class="absolute left-2.5 top-1.5 text-xs text-slate-400 font-bold">R$</span>
+                  <input type="number" id="campo-custo-mao-obra" step="any" min="0" oninput="window.app.recalcularComValoresManuais()" class="w-full pl-8 pr-2.5 py-1 text-sm font-mono font-bold text-right rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+                </div>
+              </div>
+
+              <!-- Frete / Logística -->
+              <div class="flex items-center justify-between gap-3">
+                <label for="campo-custo-frete" class="font-medium text-slate-700">Frete / Logística:</label>
+                <div class="relative w-36">
+                  <span class="absolute left-2.5 top-1.5 text-xs text-slate-400 font-bold">R$</span>
+                  <input type="number" id="campo-custo-frete" step="any" min="0" oninput="window.app.recalcularComValoresManuais()" class="w-full pl-8 pr-2.5 py-1 text-sm font-mono font-bold text-right rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+                </div>
+              </div>
+
+              <!-- Custo Total Direto -->
+              <div class="flex items-center justify-between pt-3 border-t border-slate-200">
+                <div>
+                  <span class="text-sm font-bold text-slate-900 block">Custo Total Direto:</span>
+                  <span class="text-[10px] text-slate-400">Soma de materiais, insumos, mão de obra e frete</span>
+                </div>
+                <span class="text-base font-black text-slate-900 font-mono" id="custo-total-direto-val">R$ 0,00</span>
+              </div>
+            </div>
+
+            <!-- Seletor e Campo Manual de Margem de Lucro -->
+            <div class="pt-3 border-t border-slate-100 space-y-2">
+              <div class="flex justify-between items-center">
+                <label for="campo-margem-manual" class="text-xs font-bold text-slate-700">Margem de Lucro Desejada:</label>
+                <div class="relative w-24">
+                  <input type="number" id="campo-margem-manual" step="any" min="1" max="94" value="40" oninput="window.app.ajustarMargemManual(this.value)" class="w-full pr-6 pl-2.5 py-1 text-sm font-mono font-black text-right text-sky-600 rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+                  <span class="absolute right-2.5 top-1.5 text-xs font-black text-sky-600">%</span>
+                </div>
+              </div>
+
+              <!-- Slider sincronizado -->
+              <input type="range" id="campo-margem-slider" oninput="window.app.ajustarMargemSlider(this.value)" value="40" min="10" max="80" step="1" class="w-full accent-sky-600 cursor-pointer">
+              
+              <!-- Botões rápidos de Margem -->
+              <div class="flex justify-between text-[11px] pt-0.5">
+                <button type="button" onclick="window.app.ajustarMargemManual(10)" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold transition">10% (mínima)</button>
+                <button type="button" onclick="window.app.ajustarMargemManual(40)" class="px-2 py-0.5 rounded bg-sky-100 hover:bg-sky-200 text-sky-700 font-bold transition">40% (recomendada)</button>
+                <button type="button" onclick="window.app.ajustarMargemManual(80)" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold transition">80% (máxima)</button>
+              </div>
+            </div>
+
+            <!-- Bloco Memorial Técnico & Condições Comerciais da Proposta -->
+            <div class="pt-3 border-t border-slate-100 bg-slate-50/70 p-3 rounded-xl border border-slate-200/80 space-y-2.5">
+              <div class="flex items-center justify-between">
+                <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <i data-lucide="file-text" class="w-3.5 h-3.5 text-sky-600"></i>Memorial Técnico & Condições
+                </h4>
+                <span class="text-[10px] text-slate-400">Gravado no orçamento</span>
+              </div>
+
+              <!-- Tratamento e Pintura -->
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-700 mb-0.5">Tratamento e Pintura:</label>
+                <input type="text" id="campo-memorial-pintura" class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none bg-white" placeholder="Ex: Aplicação de fundo protetor anticorrosivo (Zarcão). Acabamento final/pintura definitiva por conta do cliente.">
+              </div>
+
+              <!-- Mão de Obra e Instalação -->
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-700 mb-0.5">Mão de Obra e Instalação:</label>
+                <input type="text" id="campo-memorial-mao-obra" class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none bg-white" placeholder="Ex: Fabricação em oficina (instalação por conta do pedreiro)">
+              </div>
+
+              <!-- Pagamento e Prazo -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-700 mb-0.5">Forma de Pagamento:</label>
+                  <input type="text" id="campo-cond-pagamento" class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none bg-white" placeholder="Ex: 50% de sinal + 50% na entrega">
+                </div>
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-700 mb-0.5">Prazo de Entrega:</label>
+                  <input type="text" id="campo-cond-prazo" class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none bg-white" placeholder="Ex: 15 a 20 dias úteis">
+                </div>
+              </div>
+
+              <!-- Garantia -->
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-700 mb-0.5">Garantia Técnica:</label>
+                <input type="text" id="campo-cond-garantia" class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none bg-white" placeholder="Ex: 12 meses estrutural e solda">
+              </div>
+            </div>
+
+            <!-- Bloco Destacado: PREÇO FINAL DE VENDA E LUCRO -->
+            <div class="bg-emerald-50 border-2 border-emerald-500 rounded-xl p-4 text-center">
+              <span class="text-xs font-bold uppercase tracking-wider text-emerald-800">Preço de Venda Sugerido</span>
+              <div class="text-3xl font-black text-emerald-700 mt-1" id="preco-venda-final-destaque">
+                R$ 2.200,67
+              </div>
+              <div class="mt-2 text-xs font-semibold text-emerald-900 flex items-center justify-center gap-1.5">
+                <i data-lucide="trending-up" class="w-4 h-4 text-emerald-600"></i>
+                <span>Lucro Líquido Projetado: <b id="lucro-reais-destaque" class="text-emerald-700">R$ 880,27</b></span>
+              </div>
+            </div>
+
+            <!-- Botões de Ação do Orçamento -->
+            <div class="flex flex-col sm:flex-row gap-3 pt-2">
+              <button onclick="window.app.salvarOrcamentoAtual()" class="flex-1 py-3 px-4 rounded-xl bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition flex items-center justify-center gap-2 shadow">
+                <i data-lucide="save" class="w-4 h-4"></i>Salvar Orçamento
+              </button>
+              <button onclick="window.app.abrirModalPropostaAtual()" class="py-3 px-4 rounded-xl bg-sky-600 text-white font-bold text-sm hover:bg-sky-500 transition flex items-center justify-center gap-2 shadow">
+                <i data-lucide="send" class="w-4 h-4"></i>Emitir Proposta
+              </button>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- ABA 3: CATÁLOGO DE PREÇOS (PERFIS E CONSUMÍVEIS)           -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- ABA 3: CATÁLOGO DE PREÇOS (PERFIS E CONSUMÍVEIS)           -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <section id="aba-catalogo" class="hidden space-y-6">
+      
+      <!-- Cabeçalho e Ações Principais -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-200">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900">Catálogo de Perfis & Preços Base</h2>
+          <p class="text-sm text-slate-500">Gerencie preços de barras de 6m, chapas e insumos. Cadastre materiais e aplique reajustes globais.</p>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button onclick="window.app.abrirModalNovoMaterial()" class="px-3.5 py-2 rounded-xl bg-sky-600 text-white font-bold text-xs hover:bg-sky-500 transition flex items-center gap-1.5 shadow">
+            <i data-lucide="plus-circle" class="w-4 h-4"></i>Novo Material
+          </button>
+          <button onclick="window.app.abrirModalReajusteMassa()" class="px-3.5 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition flex items-center gap-1.5 shadow">
+            <i data-lucide="percent" class="w-4 h-4"></i>Reajuste em Massa
+          </button>
+          <button onclick="window.app.restaurarPresetsFabrica()" class="text-xs text-rose-600 hover:text-rose-800 font-semibold underline ml-2">
+            Restaurar Fábrica
+          </button>
+        </div>
+      </div>
+
+      <!-- Barra de Filtros e Busca -->
+      <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        <!-- Campo de Busca -->
+        <div class="relative flex-1 max-w-md">
+          <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+          <input type="text" id="busca-catalogo" oninput="window.app.buscarCatalogo(this.value)" placeholder="Buscar por perfil, bitola, chapa ou insumo..." class="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none">
+        </div>
+
+        <!-- Chips de Categoria -->
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+          <button onclick="window.app.filtrarCatalogoCategoria('todos')" data-categoria="todos" class="cat-filtro-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-sm transition whitespace-nowrap">
+            Todos (<span id="cat-count-todos">0</span>)
+          </button>
+          <button onclick="window.app.filtrarCatalogoCategoria('metalon')" data-categoria="metalon" class="cat-filtro-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition whitespace-nowrap">
+            Metalons (<span id="cat-count-metalon">0</span>)
+          </button>
+          <button onclick="window.app.filtrarCatalogoCategoria('cantoneira')" data-categoria="cantoneira" class="cat-filtro-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition whitespace-nowrap">
+            Cantoneiras (<span id="cat-count-cantoneira">0</span>)
+          </button>
+          <button onclick="window.app.filtrarCatalogoCategoria('barra_chata')" data-categoria="barra_chata" class="cat-filtro-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition whitespace-nowrap">
+            Barras Chatas (<span id="cat-count-barra_chata">0</span>)
+          </button>
+          <button onclick="window.app.filtrarCatalogoCategoria('tubo_redondo')" data-categoria="tubo_redondo" class="cat-filtro-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition whitespace-nowrap">
+            Tubos (<span id="cat-count-tubo_redondo">0</span>)
+          </button>
+          <button onclick="window.app.filtrarCatalogoCategoria('chapa')" data-categoria="chapa" class="cat-filtro-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition whitespace-nowrap">
+            Chapas (<span id="cat-count-chapa">0</span>)
+          </button>
+          <button onclick="window.app.filtrarCatalogoCategoria('insumo_solda')" data-categoria="insumo_solda" class="cat-filtro-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition whitespace-nowrap">
+            Solda & Insumos (<span id="cat-count-insumo_solda">0</span>)
+          </button>
+          <button onclick="window.app.filtrarCatalogoCategoria('pintura')" data-categoria="pintura" class="cat-filtro-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition whitespace-nowrap">
+            Pintura (<span id="cat-count-pintura">0</span>)
+          </button>
+          <button onclick="window.app.filtrarCatalogoCategoria('acessorio')" data-categoria="acessorio" class="cat-filtro-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition whitespace-nowrap">
+            Acessórios (<span id="cat-count-acessorio">0</span>)
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabela do Catálogo -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-xs font-bold text-slate-700 uppercase tracking-wider border-b border-slate-200">
+              <tr>
+                <th class="px-4 py-3.5">Material / Bitola</th>
+                <th class="px-4 py-3.5">Categoria</th>
+                <th class="px-4 py-3.5">Unidade / Equivalência</th>
+                <th class="px-4 py-3.5 w-44 text-right">Preço Unitário (R$)</th>
+                <th class="px-4 py-3.5 w-24 text-center">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tabela-catalogo-body" class="divide-y divide-slate-100">
+              <!-- Renderizado dinamicamente via app.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- ABA 4: CONFIGURAÇÕES DA OFICINA & BACKUP JSON              -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <section id="aba-config" class="hidden space-y-6">
+      
+      <div class="pb-2 border-b border-slate-200">
+        <h2 class="text-xl font-bold text-slate-900">Configurações da Oficina & Backup</h2>
+        <p class="text-sm text-slate-500">Personalize os dados impressos nos cabeçalhos e garanta a segurança dos seus dados locais.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <!-- Formulário da Serralheria -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+          <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+            <i data-lucide="building" class="w-4 h-4 text-sky-600"></i>Dados da Serralheria
+          </h3>
+
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Nome Fantasia da Oficina</label>
+              <input type="text" id="cfg-nome-oficina" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Telefone / WhatsApp</label>
+                <input type="text" id="cfg-telefone" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Cidade - Estado</label>
+                <input type="text" id="cfg-cidade" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Chave Pix (Para inclusão na proposta)</label>
+              <input type="text" id="cfg-pix" placeholder="CNPJ, E-mail ou Telefone" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Valor da Hora Técnica (R$)</label>
+                <input type="number" id="cfg-valor-hora" value="50" min="10" step="5" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Kerf de Corte da Serra (mm)</label>
+                <input type="number" id="cfg-kerf" value="3" min="1" max="6" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+              </div>
+            </div>
+
+            <!-- Condições Comerciais Padrão -->
+            <div class="pt-2 border-t border-slate-100 space-y-2">
+              <span class="block text-xs font-bold text-slate-800 uppercase tracking-wider">Condições Comerciais Padrão</span>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Forma de Pagamento Padrão</label>
+                <input type="text" id="cfg-cond-pagamento" placeholder="Ex: 50% de sinal no pedido + 50% na conclusão da instalação." class="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-600 mb-1">Prazo de Entrega Padrão</label>
+                  <input type="text" id="cfg-cond-prazo" placeholder="Ex: 15 a 20 dias úteis" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-600 mb-1">Garantia Padrão</label>
+                  <input type="text" id="cfg-cond-garantia" placeholder="Ex: 12 meses estrutura e solda" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Pintura / Acabamento Padrão</label>
+                <input type="text" id="cfg-memorial-pintura" placeholder="Ex: Aplicação de fundo protetor anticorrosivo (Zarcão)" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Mão de Obra / Instalação Padrão</label>
+                <input type="text" id="cfg-memorial-mao-obra" placeholder="Ex: Fabricação em oficina (instalação por conta do pedreiro)" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+              </div>
+            </div>
+
+            <button onclick="window.app.salvarConfiguracoes()" class="w-full mt-2 py-2.5 px-4 rounded-lg bg-sky-600 text-white font-semibold text-sm hover:bg-sky-700 transition">
+              Salvar Dados da Oficina
+            </button>
+          </div>
+        </div>
+
+        <!-- Bloco de Backup e Restauração -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+          <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+            <i data-lucide="database" class="w-4 h-4 text-sky-600"></i>Backup & Segurança de Dados
+          </h3>
+          <p class="text-xs text-slate-500">
+            Todos os seus orçamentos e preços ficam guardados com segurança no seu navegador. Exporte um backup regularmente para prevenir perdas ao formatar ou trocar de dispositivo.
+          </p>
+
+          <div class="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-xs font-bold text-slate-800">Exportar Arquivo de Backup</div>
+                <div class="text-[11px] text-slate-500">Gera arquivo .json com todos os orçamentos e preços.</div>
+              </div>
+              <button onclick="window.app.baixarBackupJson()" class="px-3 py-2 rounded-lg bg-slate-800 text-white text-xs font-bold hover:bg-slate-900 transition flex items-center gap-1.5">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>Exportar
+              </button>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-3">
+            <div>
+              <div class="text-xs font-bold text-slate-800">Restaurar / Importar Backup</div>
+              <div class="text-[11px] text-slate-500">Carregue um arquivo JSON previamente exportado.</div>
+            </div>
+            <input type="file" id="input-arquivo-backup" accept=".json" onchange="window.app.carregarArquivoBackup(event)" class="text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 cursor-pointer">
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!-- MODAL: EMISSÃO DE PROPOSTA (PDF / WHATSAPP)                -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <div id="modal-proposta" class="fixed inset-0 z-50 hidden bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in fade-in zoom-in-95 duration-150">
+      
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center">
+            <i data-lucide="send" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-900">Compartilhar Proposta Comercial</h3>
+            <p class="text-xs text-slate-500" id="modal-proposta-subtitulo">Orçamento #101</p>
+          </div>
+        </div>
+        <button onclick="window.app.fecharModalProposta()" class="text-slate-400 hover:text-slate-600 p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Resumo do Orçamento no Modal -->
+      <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
+        <div class="flex justify-between">
+          <span class="text-slate-500">Cliente:</span>
+          <span class="font-bold text-slate-800" id="modal-cliente-nome">Carlos Alberto</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">Estrutura:</span>
+          <span class="font-bold text-slate-800" id="modal-estrutura-resumo">Portão Deslizante (3.5m x 2.2m)</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">Barras de 6m calculadas:</span>
+          <span class="font-bold text-sky-600" id="modal-barras-total">8 barras</span>
+        </div>
+        <div class="flex justify-between text-sm font-black pt-2 border-t border-slate-200">
+          <span class="text-slate-900">Investimento Total:</span>
+          <span class="text-emerald-600" id="modal-valor-total">R$ 2.200,00</span>
+        </div>
+      </div>
+
+      <!-- Seção: Condições Comerciais Editáveis -->
+      <div class="bg-white p-3.5 rounded-xl border border-slate-200 space-y-2.5">
+        <div class="flex items-center justify-between pb-1 border-b border-slate-100">
+          <label class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+            <i data-lucide="file-text" class="w-3.5 h-3.5 text-sky-600"></i>Condições Comerciais da Proposta
+          </label>
+          <span id="modal-salvo-status" class="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
+            <i data-lucide="check" class="w-3 h-3 text-emerald-600"></i>Salvo no orçamento
+          </span>
+        </div>
+
+        <div class="space-y-2 text-xs">
+          <div>
+            <label class="block font-semibold text-slate-600 mb-0.5">Forma de Pagamento:</label>
+            <input type="text" id="modal-cond-pagamento" oninput="window.app.atualizarPreviewCondicoesModal()" placeholder="Ex: 50% de sinal no pedido + 50% na conclusão da instalação." class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block font-semibold text-slate-600 mb-0.5">Prazo de Entrega:</label>
+              <input type="text" id="modal-cond-prazo" oninput="window.app.atualizarPreviewCondicoesModal()" placeholder="Ex: 15 a 20 dias úteis" class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-600 mb-0.5">Garantia Técnica:</label>
+              <input type="text" id="modal-cond-garantia" oninput="window.app.atualizarPreviewCondicoesModal()" placeholder="Ex: 12 meses estrutural e solda" class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+            </div>
+          </div>
+
+          <div class="pt-2 border-t border-slate-100 space-y-2">
+            <div>
+              <label class="block font-semibold text-slate-600 mb-0.5">Pintura / Acabamento:</label>
+              <input type="text" id="modal-memorial-pintura" oninput="window.app.atualizarPreviewCondicoesModal()" placeholder="Ex: Aplicação de fundo protetor anticorrosivo (Zarcão)" class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-600 mb-0.5">Mão de Obra / Instalação:</label>
+              <input type="text" id="modal-memorial-mao-obra" oninput="window.app.atualizarPreviewCondicoesModal()" placeholder="Ex: Fabricação em oficina (instalação por conta do pedreiro)" class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card QR Code Pix para Entrada / Sinal -->
+      <div id="modal-bloco-pix" class="bg-gradient-to-r from-emerald-50 to-teal-50 p-3.5 rounded-xl border border-emerald-200/80 space-y-2.5">
+        <div class="flex items-center justify-between pb-1 border-b border-emerald-200/60">
+          <label class="text-xs font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
+            <i data-lucide="qr-code" class="w-4 h-4 text-emerald-600"></i>QR Code Pix para Sinal / Entrada
+          </label>
+          <span id="modal-pix-badge-percentual" class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300/50">
+            50% de entrada
+          </span>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center gap-3.5">
+          <!-- QR Code Imagem -->
+          <div class="shrink-0 bg-white p-2 rounded-xl border border-emerald-200 shadow-sm flex items-center justify-center">
+            <img id="modal-pix-qrcode-img" class="w-24 h-24 sm:w-28 sm:h-28 object-contain" alt="QR Code Pix" src="">
+          </div>
+
+          <!-- Informações e Botões de Cópia -->
+          <div class="space-y-1.5 flex-1 min-w-0 text-xs">
+            <div>
+              <span class="text-slate-500 text-[11px] block">Valor do Sinal a Pagar:</span>
+              <span id="modal-pix-valor-entrada" class="text-lg font-black text-emerald-700 font-mono">R$ 0,00</span>
+            </div>
+
+            <div class="text-[11px] text-slate-600 truncate">
+              <span>Chave Pix:</span> <strong id="modal-pix-chave-texto" class="font-mono text-slate-800 select-all">-</strong>
+            </div>
+
+            <!-- Botões de ação rápida -->
+            <div class="flex flex-wrap items-center gap-1.5 pt-1">
+              <button type="button" onclick="window.app.copiarChavePixModal()" class="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-[11px] font-bold flex items-center gap-1 transition shadow-sm">
+                <i data-lucide="copy" class="w-3 h-3 text-slate-500"></i>Copiar Chave
+              </button>
+              <button type="button" onclick="window.app.copiarPixCopiaEColaModal()" class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1 transition shadow-sm">
+                <i data-lucide="check" class="w-3 h-3"></i>Pix Copia e Cola
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pré-visualização da Mensagem de WhatsApp -->
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1">Prévia da Mensagem para WhatsApp:</label>
+        <textarea id="modal-preview-whatsapp" rows="4" class="w-full p-2.5 text-xs font-mono bg-slate-50 border border-slate-200 rounded-lg text-slate-700 resize-none outline-none"></textarea>
+      </div>
+
+      <!-- Ações de Saída -->
+      <div class="grid grid-cols-2 gap-3 pt-2">
+        <button onclick="window.app.executarDownloadPdf()" class="py-3 px-4 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition flex items-center justify-center gap-1.5 shadow">
+          <i data-lucide="file-down" class="w-4 h-4"></i>Baixar PDF A4
+        </button>
+        <button onclick="window.app.executarEnvioWhatsapp()" class="py-3 px-4 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-500 transition flex items-center justify-center gap-1.5 shadow">
+          <i data-lucide="message-circle" class="w-4 h-4"></i>Enviar WhatsApp
+        </button>
+      </div>
+
+      <div class="text-center">
+        <button onclick="window.app.copiarMensagemWhatsapp()" class="text-xs text-sky-600 hover:text-sky-800 font-semibold inline-flex items-center gap-1">
+          <i data-lucide="copy" class="w-3.5 h-3.5"></i>Copiar apenas o texto da mensagem
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!-- MODAL: CADASTRAR NOVO MATERIAL / PERFIL                   -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <div id="modal-novo-material" class="fixed inset-0 z-50 hidden bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+      
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center">
+            <i data-lucide="plus-circle" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-900">Novo Material no Catálogo</h3>
+            <p class="text-xs text-slate-500">Cadastre um perfil, chapa, insumo ou acessório</p>
+          </div>
+        </div>
+        <button onclick="window.app.fecharModalNovoMaterial()" class="text-slate-400 hover:text-slate-600 p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="form-novo-material" onsubmit="event.preventDefault(); window.app.salvarNovoMaterial();" class="space-y-3.5 text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Nome do Material / Perfil <span class="text-rose-500">*</span></label>
+          <input type="text" id="novo-mat-nome" required placeholder="Ex: Metalon 80x40 Chapa 16 (1.50mm)" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Categoria</label>
+            <select id="novo-mat-categoria" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none bg-white">
+              <option value="metalon">Metalon (Tubos Retangulares / Quadrados)</option>
+              <option value="cantoneira">Cantoneira</option>
+              <option value="barra_chata">Barra Chata</option>
+              <option value="tubo_redondo">Tubo Redondo</option>
+              <option value="chapa">Chapa / Painel</option>
+              <option value="insumo_solda">Solda & Consumíveis</option>
+              <option value="pintura">Pintura & Acabamento</option>
+              <option value="acessorio">Acessório / Ferragem</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Dimensão / Bitola</label>
+            <input type="text" id="novo-mat-dimensao" placeholder="Ex: 80x40mm" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Unidade de Medida</label>
+            <select id="novo-mat-unidade" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none bg-white">
+              <option value="barra_6m">Barra Comercial de 6 metros</option>
+              <option value="metro">Metro Linear</option>
+              <option value="kg">Quilograma (kg)</option>
+              <option value="chapa">Chapa Inteira</option>
+              <option value="unidade">Unidade / Peça</option>
+              <option value="disco">Disco</option>
+              <option value="litro">Litro / Galão</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Preço Unitário (R$) <span class="text-rose-500">*</span></label>
+            <input type="number" id="novo-mat-preco" step="any" min="0.01" required placeholder="0.00" class="w-full px-3 py-2 text-sm font-bold font-mono rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Densidade / Peso Linear (Kg/m)</label>
+            <input type="number" id="novo-mat-densidade" step="any" min="0" placeholder="Ex: 2.65 (Opcional)" class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+            <span class="text-[10px] text-slate-400">Usado no cálculo de peso de barras</span>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Descrição / Detalhe</label>
+            <input type="text" id="novo-mat-descricao" placeholder="Ex: Para portões pesados e vigamento" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+          <button type="button" onclick="window.app.fecharModalNovoMaterial()" class="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 font-semibold hover:bg-slate-200 transition">
+            Cancelar
+          </button>
+          <button type="submit" class="px-5 py-2 rounded-lg bg-sky-600 text-white font-bold hover:bg-sky-500 transition shadow">
+            Salvar Material
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!-- MODAL: EDITAR MATERIAL / PERFIL                           -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <div id="modal-editar-material" class="fixed inset-0 z-50 hidden bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+      
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
+            <i data-lucide="pencil" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-900">Editar Material do Catálogo</h3>
+            <p class="text-xs text-slate-500">Altere dados, bitola, unidade ou preço</p>
+          </div>
+        </div>
+        <button onclick="window.app.fecharModalEditarMaterial()" class="text-slate-400 hover:text-slate-600 p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="form-editar-material" onsubmit="event.preventDefault(); window.app.salvarEdicaoMaterial();" class="space-y-3.5 text-xs">
+        <input type="hidden" id="edit-mat-id">
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Nome do Material / Perfil <span class="text-rose-500">*</span></label>
+          <input type="text" id="edit-mat-nome" required placeholder="Ex: Metalon 80x40 Chapa 16" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Categoria</label>
+            <select id="edit-mat-categoria" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none bg-white">
+              <option value="metalon">Metalon (Tubos Retangulares / Quadrados)</option>
+              <option value="cantoneira">Cantoneira</option>
+              <option value="barra_chata">Barra Chata</option>
+              <option value="tubo_redondo">Tubo Redondo</option>
+              <option value="chapa">Chapa / Painel</option>
+              <option value="insumo_solda">Solda & Consumíveis</option>
+              <option value="pintura">Pintura & Acabamento</option>
+              <option value="acessorio">Acessório / Ferragem</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Dimensão / Bitola</label>
+            <input type="text" id="edit-mat-dimensao" placeholder="Ex: 80x40mm" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Unidade de Medida</label>
+            <select id="edit-mat-unidade" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none bg-white">
+              <option value="barra_6m">Barra Comercial de 6 metros</option>
+              <option value="metro">Metro Linear</option>
+              <option value="kg">Quilograma (kg)</option>
+              <option value="chapa">Chapa Inteira</option>
+              <option value="unidade">Unidade / Peça</option>
+              <option value="disco">Disco</option>
+              <option value="litro">Litro / Galão</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Preço Unitário (R$) <span class="text-rose-500">*</span></label>
+            <input type="number" id="edit-mat-preco" step="any" min="0.01" required placeholder="0.00" class="w-full px-3 py-2 text-sm font-bold font-mono rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Densidade / Peso Linear (Kg/m)</label>
+            <input type="number" id="edit-mat-densidade" step="any" min="0" placeholder="Ex: 2.65 (Opcional)" class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+            <span class="text-[10px] text-slate-400">Usado no cálculo de peso de barras</span>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Descrição / Detalhe</label>
+            <input type="text" id="edit-mat-descricao" placeholder="Ex: Para portões pesados e vigamento" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+          <button type="button" onclick="window.app.fecharModalEditarMaterial()" class="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 font-semibold hover:bg-slate-200 transition">
+            Cancelar
+          </button>
+          <button type="submit" class="px-5 py-2 rounded-lg bg-amber-600 text-white font-bold hover:bg-amber-500 transition shadow">
+            Salvar Alterações
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!-- MODAL: REAJUSTE EM MASSA (%)                              -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <div id="modal-reajuste-massa" class="fixed inset-0 z-50 hidden bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+      
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-800 flex items-center justify-center">
+            <i data-lucide="percent" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-900">Reajuste de Preços em Massa</h3>
+            <p class="text-xs text-slate-500">Atualize os preços com base na variação do aço</p>
+          </div>
+        </div>
+        <button onclick="window.app.fecharModalReajusteMassa()" class="text-slate-400 hover:text-slate-600 p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Aplicar Reajuste em:</label>
+          <select id="reajuste-categoria" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none bg-white">
+            <option value="todos">Todo o Catálogo (Todos os Materiais)</option>
+            <option value="metalon">Apenas Metalons</option>
+            <option value="cantoneira">Apenas Cantoneiras</option>
+            <option value="barra_chata">Apenas Barras Chatas</option>
+            <option value="tubo_redondo">Apenas Tubos Redondos</option>
+            <option value="chapa">Apenas Chapas / Painéis</option>
+            <option value="insumo_solda">Apenas Solda & Consumíveis</option>
+            <option value="pintura">Apenas Tintas & Fundo</option>
+            <option value="acessorio">Apenas Acessórios & Ferragens</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Porcentagem de Reajuste (%)</label>
+          <div class="relative">
+            <input type="number" id="reajuste-percentual" step="any" value="5" class="w-full px-3 py-2 pr-10 text-lg font-bold font-mono rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none">
+            <span class="absolute right-3 top-2.5 font-bold text-slate-400 text-base">%</span>
+          </div>
+          <span class="text-[11px] text-slate-400">Use números positivos para aumento (ex: 5) ou negativos para desconto (ex: -5).</span>
+        </div>
+
+        <!-- Atalhos rápidos de % -->
+        <div>
+          <label class="block font-semibold text-slate-600 mb-1.5">Atalhos Frequentes:</label>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="window.app.definirPercentualReajuste(5)" class="flex-1 py-1 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 transition">+5%</button>
+            <button type="button" onclick="window.app.definirPercentualReajuste(8)" class="flex-1 py-1 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 transition">+8%</button>
+            <button type="button" onclick="window.app.definirPercentualReajuste(10)" class="flex-1 py-1 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 transition">+10%</button>
+            <button type="button" onclick="window.app.definirPercentualReajuste(15)" class="flex-1 py-1 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 transition">+15%</button>
+            <button type="button" onclick="window.app.definirPercentualReajuste(-5)" class="flex-1 py-1 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-rose-600 transition">-5%</button>
+          </div>
+        </div>
+
+        <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-800 text-[11px] flex items-start gap-2">
+          <i data-lucide="alert-circle" class="w-4 h-4 text-amber-600 shrink-0 mt-0.5"></i>
+          <div>
+            Os preços unitários cadastrados serão multiplicados automaticamente pela taxa escolhida e arredondados para 2 casas decimais.
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+          <button type="button" onclick="window.app.fecharModalReajusteMassa()" class="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 font-semibold hover:bg-slate-200 transition">
+            Cancelar
+          </button>
+          <button type="button" onclick="window.app.aplicarReajusteMassa()" class="px-5 py-2 rounded-lg bg-slate-900 text-white font-bold hover:bg-slate-800 transition shadow">
+            Aplicar Reajuste
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- RODAPÉ -->
+  <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div>Serralheria Pro — Desenvolvido com Reversa SDD (Spec-Driven Development)</div>
+      <div class="text-slate-400">100% Client-Side • LocalStorage • Barras Comerciais de 6000mm</div>
+    </div>
+  </footer>
+
+  <!-- Script Principal da Aplicação (Empacotado para funcionar com duplo clique em file:// e via servidor local) -->
+  <script src="src/app.bundle.js"></script>
+
+</body>
+</html>

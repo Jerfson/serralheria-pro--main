@@ -1,0 +1,15 @@
+{
+  "schema-version": 1,
+  "feature-dir": "_reversa_forward/001-mvp-orcamentos-serralheria",
+  "feature-id": "001",
+  "short-name": "mvp-orcamentos-serralheria",
+  "started-at": "2026-09-24T08:11:00-03:00",
+  "current-stage": "done",
+  "stages-completed": [
+    "requirements",
+    "plan",
+    "to-do",
+    "coding"
+  ],
+  "paused-features": []
+}
